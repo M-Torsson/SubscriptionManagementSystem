@@ -100,4 +100,29 @@ public class SubscriberProcessorTest {
         assertEquals(3, b.getMonthsRemaining());
         assertEquals(2, c.getMonthsRemaining());
     }
+
+    @Test
+    void testDeactivateExpiredFreeSubscribers() {
+
+        SubscriberDAO dao = new SubscriberDAO();
+
+        // Add test data
+        dao.save(new Subscriber(1, "a@test.com", Plan.FREE, true, 0));
+        dao.save(new Subscriber(2, "b@test.com", Plan.BASIC, true, 0));
+        dao.save(new Subscriber(3, "c@test.com", Plan.FREE, true, 2));
+
+        SubscriberProcessor processor = new SubscriberProcessor();
+
+        processor.applyToMatching(
+                dao.findAll(),
+                s -> s.getPlan() == Plan.FREE && s.getMonthsRemaining() == 0,
+                BusinessRules.deactivateSubscriber()
+        );
+
+        List<Subscriber> all = dao.findAll();
+
+        assertFalse(all.get(0).isActive()); // should be deactivated
+        assertTrue(all.get(1).isActive());  // should remain active
+        assertTrue(all.get(2).isActive());  // should remain active
+    }
 }
