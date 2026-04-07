@@ -48,4 +48,27 @@ public class SubscriberProcessorTest {
         // Expect subscribers with 0 or 1 month remaining
         assertEquals(2, result.size());
     }
+
+    @Test
+    void testActiveAndExpiringSubscribers() {
+
+        SubscriberDAO dao = new SubscriberDAO();
+
+        // Add test data
+        dao.save(new Subscriber(1, "a@test.com", Plan.FREE, true, 0));  // active + expiring
+        dao.save(new Subscriber(2, "b@test.com", Plan.BASIC, true, 1)); // active + expiring
+        dao.save(new Subscriber(3, "c@test.com", Plan.PRO, false, 0));  // not active
+        dao.save(new Subscriber(4, "d@test.com", Plan.PRO, true, 5));   // not expiring
+
+        SubscriberProcessor processor = new SubscriberProcessor();
+
+        List<Subscriber> result = processor.findSubscribers(
+                dao.findAll(),
+                s -> BusinessRules.activeSubscriber().matches(s)
+                        && BusinessRules.expiringSubscription().matches(s)
+        );
+
+        // Expect only subscribers who are active AND expiring
+        assertEquals(2, result.size());
+    }
 }
