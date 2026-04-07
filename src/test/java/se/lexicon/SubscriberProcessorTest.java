@@ -55,10 +55,10 @@ public class SubscriberProcessorTest {
         SubscriberDAO dao = new SubscriberDAO();
 
         // Add test data
-        dao.save(new Subscriber(1, "a@test.com", Plan.FREE, true, 0));  // active + expiring
-        dao.save(new Subscriber(2, "b@test.com", Plan.BASIC, true, 1)); // active + expiring
-        dao.save(new Subscriber(3, "c@test.com", Plan.PRO, false, 0));  // not active
-        dao.save(new Subscriber(4, "d@test.com", Plan.PRO, true, 5));   // not expiring
+        dao.save(new Subscriber(1, "a@test.com", Plan.FREE, true, 0));
+        dao.save(new Subscriber(2, "b@test.com", Plan.BASIC, true, 1));
+        dao.save(new Subscriber(3, "c@test.com", Plan.PRO, false, 0));
+        dao.save(new Subscriber(4, "d@test.com", Plan.PRO, true, 5));
 
         SubscriberProcessor processor = new SubscriberProcessor();
 
@@ -70,5 +70,34 @@ public class SubscriberProcessorTest {
 
         // Expect only subscribers who are active AND expiring
         assertEquals(2, result.size());
+    }
+
+    @Test
+    void testExtendSubscriptionForPayingSubscribers() {
+
+        SubscriberDAO dao = new SubscriberDAO();
+
+        // Add test data
+        dao.save(new Subscriber(1, "a@test.com", Plan.FREE, true, 0));
+        dao.save(new Subscriber(2, "b@test.com", Plan.BASIC, true, 1));
+        dao.save(new Subscriber(3, "c@test.com", Plan.PRO, true, 0));
+
+        SubscriberProcessor processor = new SubscriberProcessor();
+
+        processor.applyToMatching(
+                dao.findAll(),
+                s -> BusinessRules.payingSubscriber().matches(s)
+                        && BusinessRules.expiringSubscription().matches(s),
+                BusinessRules.extendSubscription(2)
+        );
+
+        // Check results
+        List<Subscriber> all = dao.findAll();
+
+        Subscriber b = all.get(1);
+        Subscriber c = all.get(2);
+
+        assertEquals(3, b.getMonthsRemaining());
+        assertEquals(2, c.getMonthsRemaining());
     }
 }
